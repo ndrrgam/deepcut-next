@@ -5,6 +5,7 @@ import { todayWIB } from '@/lib/datetime';
 import { BLOCKED_BOOKING_NAME } from '@/lib/constants';
 import CustomSelect from '@/components/CustomSelect';
 import DatePickerField from '@/components/DatePickerField';
+import ContentEditor from '@/components/admin/ContentEditor';
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
 
@@ -76,7 +77,7 @@ async function api<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'bookings' | 'schedule'>('bookings');
+  const [activeTab, setActiveTab] = useState<'bookings' | 'schedule' | 'content'>('bookings');
   const [branches, setBranches] = useState<Branch[]>([]);
 
   useEffect(() => {
@@ -110,13 +111,21 @@ export default function AdminDashboard() {
           >
             Jadwal Harian
           </TabButton>
+          <TabButton
+            active={activeTab === 'content'}
+            onClick={() => setActiveTab('content')}
+          >
+            Konten
+          </TabButton>
         </div>
       </div>
 
       {activeTab === 'bookings' ? (
         <BookingsPanel branches={branches} />
-      ) : (
+      ) : activeTab === 'schedule' ? (
         <SchedulePanel branches={branches} />
+      ) : (
+        <ContentEditor />
       )}
     </div>
   );

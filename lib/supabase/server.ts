@@ -3,6 +3,14 @@ import { cookies } from 'next/headers';
 import type { Database } from '../types';
 
 /**
+ * Next.js patches the global `fetch` in server runtime and applies HTTP
+ * caching to GET requests by default. Force `no-store` so Supabase queries
+ * always hit PostgREST directly and never return stale cached responses.
+ */
+const noStoreFetch: typeof fetch = (input, init) =>
+  fetch(input, { ...init, cache: 'no-store' });
+
+/**
  * Supabase Server Client untuk Route Handlers & Server Components.
  * Menggunakan cookie untuk sesi admin. Dipakai untuk operasi yang
  * memerlukan identitas user (mis. validasi session admin di API).
@@ -28,6 +36,9 @@ export async function createSupabaseServerClient() {
             // middleware is refreshing sessions.
           }
         },
+      },
+      global: {
+        fetch: noStoreFetch,
       },
     },
   );

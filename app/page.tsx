@@ -3,30 +3,18 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import BookingForm from '@/components/BookingForm';
-
-/* ================================================================
-   DATA
-   ================================================================ */
-
-const SERVICES = [
-  { name: 'Haircut Reguler', price: '60.000' },
-  { name: 'Fade / UnderCut', price: '75.000' },
-  { name: 'Haircut + Beard', price: '100.000' },
-  { name: 'Razor Shave (Hot Towel)', price: '65.000' },
-  { name: 'Beard Trim / Grooming', price: '45.000' },
-  { name: 'Kids Cut (≤ 10 th)', price: '50.000' },
-  { name: 'Creambath / Treatment', price: '85.000' },
-  { name: 'Hair Coloring', price: '250.000' },
-];
-
-const MARQUEE_ITEMS = [
-  'Fade Presisi',
-  'Beard Grooming',
-  'Hot Towel Shave',
-  'Hair Coloring',
-  'Kids Cut',
-  'Creambath',
-];
+import {
+  DEFAULT_CONTENT,
+  type HeroContent,
+  type Service,
+  type GalleryItem,
+  type StatItem,
+  type WhyPoint,
+  type HourRow,
+  type BranchInfo,
+  type CtaContent,
+  type ContactInfo,
+} from '@/lib/content';
 
 /* ================================================================
    COMPONENTS
@@ -45,7 +33,7 @@ function ScissorsIcon() {
 }
 
 /* ---------- HEADER ---------- */
-function Header() {
+function Header({ contact }: { contact: ContactInfo }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -79,7 +67,7 @@ function Header() {
         </nav>
 
         <a
-          href="https://wa.me/6287741445773?text=Halo%20DEEP%20CUT%2C%20mau%20booking"
+          href={`https://wa.me/${contact.wa_number}?text=Halo%20DEEP%20CUT%2C%20mau%20booking`}
           target="_blank"
           rel="noopener noreferrer"
           className="hidden md:inline-flex items-center gap-2 bg-accent text-white text-xs font-semibold tracking-[0.12em] uppercase px-5 py-2.5 rounded hover:bg-[#FF6A1F] transition-colors"
@@ -104,7 +92,7 @@ function Header() {
           <a href="#booking" className="py-3 text-sm tracking-[0.14em] uppercase text-body" onClick={() => setOpen(false)}>Booking</a>
           <a href="#galeri" className="py-3 text-sm tracking-[0.14em] uppercase text-body" onClick={() => setOpen(false)}>Galeri</a>
           <a href="#lokasi" className="py-3 text-sm tracking-[0.14em] uppercase text-body" onClick={() => setOpen(false)}>Lokasi</a>
-          <a href="https://wa.me/6287741445773" target="_blank" rel="noopener noreferrer" className="pt-4 pb-2 text-sm font-semibold tracking-[0.12em] uppercase text-accent" onClick={() => setOpen(false)}>
+          <a href={`https://wa.me/${contact.wa_number}`} target="_blank" rel="noopener noreferrer" className="pt-4 pb-2 text-sm font-semibold tracking-[0.12em] uppercase text-accent" onClick={() => setOpen(false)}>
             Book via WhatsApp
           </a>
         </nav>
@@ -114,7 +102,7 @@ function Header() {
 }
 
 /* ---------- HERO ---------- */
-function Hero() {
+function Hero({ content }: { content: HeroContent }) {
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* background glow */}
@@ -133,15 +121,15 @@ function Hero() {
 
           <h1 className="font-display italic font-extrabold leading-[0.88] tracking-tight uppercase text-[clamp(2.8rem,11vw,9rem)]">
             <span className="hero-title-line block" style={{ '--line-delay': '0.18s' } as React.CSSProperties}>
-              <span className="block">Bukan Sekadar</span>
+              <span className="block">{content.title_line_1}</span>
             </span>
             <span className="hero-title-line block" style={{ '--line-delay': '0.32s' } as React.CSSProperties}>
-              <span className="block text-accent">Potong Rambut</span>
+              <span className="block text-accent">{content.title_line_2}</span>
             </span>
           </h1>
 
           <p className="hero-rise mt-7 max-w-[46ch] text-body text-base sm:text-lg leading-relaxed" style={{ '--rise-delay': '0.48s' } as React.CSSProperties}>
-            Ini soal presisi, detail, dan vibe yang bikin lo balik lagi. Bukan janji — <strong className="text-ink font-semibold">hasil</strong>.
+            {content.subtitle}
           </p>
 
           <div className="hero-rise flex flex-col sm:flex-row sm:flex-wrap gap-3.5 mt-8" style={{ '--rise-delay': '0.62s' } as React.CSSProperties}>
@@ -161,15 +149,15 @@ function Hero() {
           <div className="hero-rise flex flex-wrap gap-x-8 sm:gap-x-12 gap-y-3 mt-14 pt-5 border-t border-line text-sm" style={{ '--rise-delay': '0.76s' } as React.CSSProperties}>
             <div className="flex flex-col gap-0.5">
               <span className="text-[0.7rem] tracking-[0.22em] uppercase text-muted">Jam Buka</span>
-              <span className="text-ink font-medium">10.00 – 21.00 WIB</span>
+              <span className="text-ink font-medium">{content.meta_jam_buka}</span>
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-[0.7rem] tracking-[0.22em] uppercase text-muted">Instagram</span>
-              <span className="text-ink font-medium">@deepcut.id</span>
+              <span className="text-ink font-medium">{content.meta_instagram}</span>
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-[0.7rem] tracking-[0.22em] uppercase text-muted">Status</span>
-              <span className="text-ink font-medium">Walk-in &amp; Booking</span>
+              <span className="text-ink font-medium">{content.meta_status}</span>
             </div>
           </div>
         </div>
@@ -178,7 +166,7 @@ function Hero() {
         <div className="relative hidden lg:block min-h-[720px]">
           <div className="absolute inset-0 clip-blade overflow-hidden">
             <Image
-              src="/hero-barber.webp"
+              src={content.image_url || '/hero-barber.webp'}
               alt="Barber DEEP CUT mengerjakan fade presisi dengan clipper di depan cermin"
               fill
               className="object-cover"
@@ -199,12 +187,7 @@ function Hero() {
 }
 
 /* ---------- SOCIAL PROOF BAR ---------- */
-function SocialProof() {
-  const stats = [
-    { value: '2', label: 'Cabang di Pati' },
-    { value: '4.9★', label: 'Rating Google Maps' },
-    { value: '2022', label: 'Berdiri Sejak' },
-  ];
+function SocialProof({ stats }: { stats: StatItem[] }) {
   return (
     <div className="border-y border-line bg-surface-secondary">
       <div className="mx-auto max-w-[1120px] px-[4%] flex flex-wrap justify-center md:justify-between gap-8 py-6">
@@ -220,10 +203,10 @@ function SocialProof() {
 }
 
 /* ---------- MARQUEE ---------- */
-function Marquee() {
+function Marquee({ items }: { items: string[] }) {
   const group = (
     <div className="flex items-center gap-[46px] pr-[46px]">
-      {MARQUEE_ITEMS.map((item) => (
+      {items.map((item) => (
         <span key={item} className="flex items-center gap-[46px]">
           <span className="font-display text-[1.55rem] tracking-[0.12em] uppercase text-muted whitespace-nowrap italic">{item}</span>
           <ScissorsIcon />
@@ -242,7 +225,7 @@ function Marquee() {
 }
 
 /* ---------- SERVICES ---------- */
-function Services() {
+function Services({ services }: { services: Service[] }) {
   return (
     <section id="layanan" className="py-28 border-b border-line bg-surface-secondary">
       <div className="mx-auto max-w-[1120px] px-[4%]">
@@ -257,8 +240,8 @@ function Services() {
         <div className="grid md:grid-cols-2 gap-x-20 gap-y-0">
           {[0, 1].map((col) => (
             <div key={col}>
-              {SERVICES.filter((_, i) => i % 2 === col).map((s) => (
-                <div key={s.name} className="reveal-hidden flex items-baseline justify-between gap-5 py-[19px] border-b border-line" style={{ '--d': `${0.04 + SERVICES.indexOf(s) * 0.08}s` } as React.CSSProperties}>
+              {services.filter((_, i) => i % 2 === col).map((s) => (
+                <div key={s.name} className="reveal-hidden flex items-baseline justify-between gap-5 py-[19px] border-b border-line" style={{ '--d': `${0.04 + services.indexOf(s) * 0.08}s` } as React.CSSProperties}>
                   <span className="text-[1.02rem] font-medium">{s.name}</span>
                   <span className="flex-1 border-b border-dotted border-white/15 translate-y-[-4px]" aria-hidden="true" />
                   <span className="font-display text-[1.35rem] tracking-[0.04em] text-accent font-bold italic flex-shrink-0">
@@ -275,24 +258,7 @@ function Services() {
 }
 
 /* ---------- WHY DEEP CUT ---------- */
-function Why() {
-  const points = [
-    {
-      num: '01',
-      title: 'Presisi di Setiap Garis',
-      body: 'Fade lo diukur, bukan ditebak. Setiap transisi di blade — dari skin sampai bulk — dikerjain dengan mata detail yang sama.',
-    },
-    {
-      num: '02',
-      title: 'Alat & Produk Serius',
-      body: 'Pisau selalu tajam, handuk panas bukan basa-basi, dan produk yang beneran rawat rambut lo — bukan cuma pajangan di rak.',
-    },
-    {
-      num: '03',
-      title: 'Bukan Sekadar Cukur',
-      body: 'Ini ruang di mana lo duduk nyaman, ngobrol atau diem, dan keluar dengan kepala tegak. Bukan salon, bukan tempat nongkrong norak.',
-    },
-  ];
+function Why({ points }: { points: WhyPoint[] }) {
   return (
     <section id="tentang" className="py-28">
       <div className="mx-auto max-w-[1120px] px-[4%]">
@@ -323,13 +289,7 @@ function Why() {
 }
 
 /* ---------- GALLERY ---------- */
-function Gallery() {
-  const altTexts = [
-    'Fade presisi low-taper — hasil potongan DEEP CUT',
-    'Beard line-up rapi — grooming DEEP CUT',
-    'Hot towel razor shave — servis unggulan DEEP CUT',
-    'Side profile fade — detail transisi blade DEEP CUT',
-  ];
+function Gallery({ items, instagramHandle }: { items: GalleryItem[]; instagramHandle: string }) {
   return (
     <section id="galeri" className="py-28 border-y border-line bg-surface-secondary">
       <div className="mx-auto max-w-[1120px] px-[4%]">
@@ -341,13 +301,32 @@ function Gallery() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-          {altTexts.map((alt, i) => (
+          {items.map((g, i) => (
             <div
               key={i}
-              className="reveal-hidden aspect-[4/5] rounded-md border border-line bg-surface-tertiary flex flex-col items-center justify-center gap-2.5 text-center p-5 hover:-translate-y-1.5 hover:border-accent/40 transition-all duration-300 group"
+              className="reveal-hidden aspect-[4/5] rounded-md border border-line bg-surface-tertiary overflow-hidden relative flex flex-col items-center justify-center gap-2.5 text-center group hover:-translate-y-1.5 hover:border-accent/40 transition-all duration-300"
             >
-              <ScissorsIcon />
-              <span className="text-[0.72rem] tracking-[0.2em] uppercase text-copper/60 group-hover:text-accent/80 transition-colors">{alt}</span>
+              {g.image_url ? (
+                <>
+                  <Image
+                    src={g.image_url}
+                    alt={g.alt}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                  />
+                  <span className="absolute inset-x-0 bottom-0 bg-black/55 px-3 py-2 text-[0.68rem] tracking-[0.16em] uppercase text-white/80">
+                    {g.alt}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <ScissorsIcon />
+                  <span className="text-[0.72rem] tracking-[0.2em] uppercase text-copper/60 group-hover:text-accent/80 transition-colors">
+                    {g.alt}
+                  </span>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -355,12 +334,12 @@ function Gallery() {
         <div className="reveal-hidden mt-9 text-center">
           <p className="text-body text-sm mb-4">Lebih banyak hasil potongan ada di feed Instagram kami.</p>
           <a
-            href="https://www.instagram.com/deepcut.id/"
+            href={`https://www.instagram.com/${instagramHandle}/`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 border border-white/20 text-ink text-xs font-semibold tracking-[0.12em] uppercase px-6 py-3 rounded hover:border-white/60 transition-all"
           >
-            Follow @deepcut.id ↗
+            Follow @{instagramHandle} ↗
           </a>
         </div>
       </div>
@@ -369,7 +348,7 @@ function Gallery() {
 }
 
 /* ---------- LOCATION ---------- */
-function Location() {
+function Location({ hours, branches, contact }: { hours: HourRow[]; branches: BranchInfo[]; contact: ContactInfo }) {
   return (
     <section id="lokasi" className="py-28 border-t border-line bg-surface-secondary">
       <div className="mx-auto max-w-[1120px] px-[4%]">
@@ -384,13 +363,10 @@ function Location() {
           <div className="reveal-hidden">
             <h3 className="font-display font-bold italic text-[1.35rem] tracking-[0.08em] uppercase text-copper mb-4">Jam Buka</h3>
             <ul className="space-y-0">
-              {[
-                ['Senin – Minggu', '10.00 – 21.00 WIB'],
-                ['Hari Libur Nasional', 'Konfirmasi via WA'],
-              ].map(([day, time]) => (
-                <li key={day} className="flex justify-between gap-6 py-3 border-b border-line text-body text-sm">
-                  <span>{day}</span>
-                  <span className="text-ink">{time}</span>
+              {hours.map((h) => (
+                <li key={h.day} className="flex justify-between gap-6 py-3 border-b border-line text-body text-sm">
+                  <span>{h.day}</span>
+                  <span className="text-ink">{h.time}</span>
                 </li>
               ))}
             </ul>
@@ -398,20 +374,17 @@ function Location() {
 
           <div className="reveal-hidden">
             <h3 className="font-display font-bold italic text-[1.35rem] tracking-[0.08em] uppercase text-copper mb-4">Alamat</h3>
-            <p className="text-body">
-              <strong className="text-ink font-semibold">Cabang Penjawi</strong>
-              <br />
-              Penjawi No. 49A, Pati, Jawa Tengah
-            </p>
-            <p className="text-body mt-4">
-              <strong className="text-ink font-semibold">Cabang Jiwonolo</strong>
-              <br />
-              Jiwonolo, Pati, Jawa Tengah
-            </p>
+            {branches.map((b) => (
+              <p key={b.nama} className={`text-body ${branches.length > 1 ? 'mb-4' : ''}`}>
+                <strong className="text-ink font-semibold">{b.nama}</strong>
+                <br />
+                {b.alamat}
+              </p>
+            ))}
 
             <div className="flex flex-col items-start gap-3 mt-8">
               <a
-                href="https://wa.me/6287741445773?text=Halo%20DEEP%20CUT%2C%20mau%20booking"
+                href={`https://wa.me/${contact.wa_number}?text=Halo%20DEEP%20CUT%2C%20mau%20booking`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-accent text-white text-xs font-semibold tracking-[0.12em] uppercase px-5 py-2.5 rounded hover:bg-[#FF6A1F] transition-colors"
@@ -419,12 +392,12 @@ function Location() {
                 WhatsApp Booking
               </a>
               <a
-                href="https://www.instagram.com/deepcut.id/"
+                href={`https://www.instagram.com/${contact.instagram_handle}/`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2.5 text-[0.95rem] font-semibold text-ink border-b border-copper pb-1 hover:text-accent transition-colors"
               >
-                Instagram @deepcut.id ↗
+                Instagram @{contact.instagram_handle} ↗
               </a>
             </div>
           </div>
@@ -483,19 +456,19 @@ function Booking() {
 }
 
 /* ---------- FINAL CTA ---------- */
-function FinalCTA() {
+function FinalCTA({ cta, contact }: { cta: CtaContent; contact: ContactInfo }) {
   return (
     <section className="py-32 relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,rgba(254,82,0,0.12),transparent_65%)]" aria-hidden="true" />
       <div className="mx-auto max-w-[720px] px-[4%] text-center relative z-10">
         <h2 className="font-display font-extrabold italic text-[clamp(2.6rem,7vw,5rem)] leading-[0.92] uppercase tracking-tight">
-          Siap Dapetin Potongan Terbaik Lo?
+          {cta.heading}
         </h2>
         <p className="mt-5 text-body max-w-[50ch] mx-auto">
-          Booking sekarang, duduk santai, dan keluar dengan gaya yang lo percaya diri pakai. Cukup satu klik.
+          {cta.subtitle}
         </p>
         <a
-          href="https://wa.me/6287741445773?text=Halo%20DEEP%20CUT%2C%20mau%20booking"
+          href={`https://wa.me/${contact.wa_number}?text=Halo%20DEEP%20CUT%2C%20mau%20booking`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 mt-9 bg-accent text-white text-sm font-semibold tracking-[0.12em] uppercase px-8 py-4 rounded hover:bg-[#FF6A1F] transition-colors group"
@@ -509,7 +482,7 @@ function FinalCTA() {
 }
 
 /* ---------- FOOTER ---------- */
-function Footer() {
+function Footer({ instagramHandle }: { instagramHandle: string }) {
   return (
     <footer className="border-t border-line py-11">
       <div className="mx-auto max-w-[1120px] px-[4%] flex flex-wrap items-center justify-between gap-6">
@@ -519,8 +492,8 @@ function Footer() {
         </div>
         <p className="text-muted text-sm">
           © 2026 DEEP CUT Barber Shop ·{' '}
-          <a href="https://www.instagram.com/deepcut.id/" target="_blank" rel="noopener noreferrer" className="text-body border-b border-line hover:text-ink transition-colors">
-            @deepcut.id
+          <a href={`https://www.instagram.com/${instagramHandle}/`} target="_blank" rel="noopener noreferrer" className="text-body border-b border-line hover:text-ink transition-colors">
+            @{instagramHandle}
           </a>
         </p>
       </div>
@@ -562,26 +535,49 @@ function useScrollReveal() {
 }
 
 /* ================================================================
+   CONTENT HOOK
+   ================================================================ */
+function useContent() {
+  const [content, setContent] = useState(DEFAULT_CONTENT);
+  useEffect(() => {
+    let active = true;
+    fetch('/api/content')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (active && r?.data) {
+          setContent({ ...DEFAULT_CONTENT, ...r.data });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+  return content;
+}
+
+/* ================================================================
    PAGE
    ================================================================ */
 export default function Home() {
   useScrollReveal();
+  const content = useContent();
 
   return (
     <>
-      <Header />
+      <Header contact={content.contact} />
       <main>
-        <Hero />
-        <SocialProof />
-        <Marquee />
-        <Services />
-        <Why />
-        <Gallery />
+        <Hero content={content.hero} />
+        <SocialProof stats={content.stats} />
+        <Marquee items={content.marquee} />
+        <Services services={content.services} />
+        <Why points={content.why} />
+        <Gallery items={content.gallery} instagramHandle={content.contact.instagram_handle} />
         <Booking />
-        <Location />
-        <FinalCTA />
+        <Location hours={content.hours} branches={content.branches} contact={content.contact} />
+        <FinalCTA cta={content.cta} contact={content.contact} />
       </main>
-      <Footer />
+      <Footer instagramHandle={content.contact.instagram_handle} />
     </>
   );
 }

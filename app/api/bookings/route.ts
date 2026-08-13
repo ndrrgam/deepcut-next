@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
   const takenSeats = new Set(active.map((b) => b.kursi));
   const kursi = [1, 2].find((k) => !takenSeats.has(k)) ?? 1;
 
-  // 5. Simpan booking — langsung terkonfirmasi (tanpa verifikasi admin).
+  // 5. Simpan booking dengan status pending — admin konfirmasi via WhatsApp.
   //    Pakai service role client agar tidak terblokir RLS.
   const adminClient = createSupabaseAdminClient();
   const jam_selesai = jamSelesai(jam_mulai);
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
       jam_mulai,
       jam_selesai,
       kursi,
-      status: 'confirmed',
+      status: 'pending',
     })
     .select()
     .single();
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
   return json(
     {
       data: booking,
-      message: 'Booking berhasil dan langsung dikonfirmasi.',
+      message: 'Booking tersimpan. Menunggu konfirmasi admin.',
     },
     201,
   );
