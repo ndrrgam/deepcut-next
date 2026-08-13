@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  ::selection {
+    background-color: #FE5200;
+    color: #fff;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *, *::before, *::after {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+}
+
+@layer components {
+  .hero-title-line {
+    @apply block overflow-hidden;
+  }
+  .hero-title-line > span {
+    @apply block;
+    transform: translateY(115%);
+  }
+
+  .reveal-hidden {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.75s cubic-bezier(0.22, 0.61, 0.36, 1),
+                transform 0.75s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .reveal-shown {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* editorial number */
+  .why-number {
+    @apply font-display text-[1.65rem] italic font-bold text-copper tracking-tight;
+  }
+}
+
+@layer utilities {
+  /* signature blade-cut diagonal layers */
+  .clip-blade {
+    clip-path: polygon(38% 0, 100% 0, 100% 100%, 6% 100%);
+  }
+  .clip-blade-line {
+    clip-path: polygon(calc(38% - 10px) 0, calc(38% + 2px) 0, calc(6% + 2px) 100%, calc(6% - 10px) 100%);
+  }
+  @media (max-width: 1024px) {
+    .clip-blade,
+    .clip-blade-line {
+      clip-path: none;
+    }
+  }
+}
+
+/* ============ MOTION ============ */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-title-line > span {
+    animation: linerise 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    animation-delay: var(--line-delay, 0s);
+  }
+
+  .hero-rise {
+    opacity: 0;
+    animation: rise 0.85s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    animation-delay: var(--rise-delay, 0s);
+  }
+
+  .marquee-track {
+    animation: marquee 30s linear infinite;
+  }
+  .marquee-track:hover {
+    animation-play-state: paused;
+  }
+
+  @keyframes linerise {
+    to { transform: translateY(0); }
+  }
+  @keyframes rise {
+    to { opacity: 1; }
+  }
+  @keyframes marquee {
+    to { transform: translateX(-50%); }
+  }
+
+  @keyframes dropfade {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
