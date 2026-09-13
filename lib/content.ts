@@ -4,6 +4,8 @@
  * ke tabel `site_settings` di Supabase (key = 'landing').
  */
 
+import { DEFAULT_WHATSAPP_NUMBER } from './contact';
+
 export type Service = {
   name: string;
   price: string;
@@ -151,7 +153,7 @@ export const DEFAULT_CONTENT: LandingContent = {
       'Booking sekarang, duduk santai, dan keluar dengan gaya yang lo percaya diri pakai. Cukup satu klik.',
   },
   contact: {
-    wa_number: '6287741445773',
+    wa_number: DEFAULT_WHATSAPP_NUMBER,
     instagram_handle: 'deepcut.id',
   },
 };
