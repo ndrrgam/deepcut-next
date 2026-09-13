@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_CONTENT,
   type LandingContent,
@@ -53,17 +53,43 @@ export default function ContentEditor() {
   const [content, setContent] = useState<LandingContent>(DEFAULT_CONTENT);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
-  useEffect(() => {
-    fetch('/api/content')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((r) => {
-        if (r?.data) setContent({ ...DEFAULT_CONTENT, ...r.data });
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  /**
+   * Muat konten dari DB.
+   *
+   * Sebelumnya error ditelan dengan `.catch(() => {})`. Akibatnya form
+   * tetap terisi DEFAULT_CONTENT tanpa peringatan, dan menekan "Simpan
+   * Konten" akan menimpa data asli di database dengan data default.
+   * Sekarang kegagalan load dikunci: form tidak bisa disimpan sampai
+   * konten benar-benar berhasil dimuat.
+   */
+  const loadContent = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const res = await fetch('/api/content', { cache: 'no-store' });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(body?.error || `Gagal memuat konten (${res.status})`);
+      }
+      if (!body?.data) {
+        throw new Error('Respons konten kosong dari server.');
+      }
+      setContent({ ...DEFAULT_CONTENT, ...body.data });
+    } catch (e) {
+      setLoadError(
+        e instanceof Error ? e.message : 'Gagal memuat konten dari server.',
+      );
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadContent();
+  }, [loadContent]);
 
   function setHero<K extends keyof typeof content.hero>(key: K, value: string) {
     setContent((c) => ({ ...c, hero: { ...c.hero, [key]: value } }));
@@ -218,6 +244,15 @@ export default function ContentEditor() {
   async function save() {
     setSaving(true);
     setMessage(null);
+
+    // Cegah penyimpanan konten yang lebih tipis dari data di database —
+    // tanda form dimuat gagal lalu menimpa data bagus dengan default.
+    if (content.services.length < 1) {
+      setSaving(false);
+      setMessage({ type: 'err', text: 'Minimal harus ada 1 layanan.' });
+      return;
+    }
+
     try {
       const res = await fetch('/api/content', {
         method: 'PUT',
@@ -225,8 +260,16 @@ export default function ContentEditor() {
         body: JSON.stringify({ value: content }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || 'Gagal menyimpan');
-      setMessage({ type: 'ok', text: 'Konten berhasil disimpan.' });
+      if (!res.ok) {
+        const detail = body?.details
+          ? ` ${JSON.stringify(body.details)}`
+          : '';
+        throw new Error((body.error || 'Gagal menyimpan') + detail);
+      }
+      setMessage({
+        type: 'ok',
+        text: `Konten berhasil disimpan (${body.services ?? content.services.length} layanan).`,
+      });
     } catch (e) {
       setMessage({ type: 'err', text: e instanceof Error ? e.message : 'Gagal menyimpan' });
     } finally {
@@ -236,6 +279,32 @@ export default function ContentEditor() {
 
   if (loading) {
     return <p className="text-sm text-muted">Memuat konten…</p>;
+  }
+
+  // Konten gagal dimuat — JANGAN tampilkan form. Mengizinkan pengeditan di
+  // sini berisiko menimpa data asli dengan DEFAULT_CONTENT.
+  if (loadError) {
+    return (
+      <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-6">
+        <h2 className="font-display text-xl font-bold uppercase italic tracking-tight text-red-300">
+          Gagal Memuat Konten
+        </h2>
+        <p className="mt-3 text-sm text-red-200">
+          Editor dikunci supaya data di database tidak tertimpa. Perbaiki
+          dulu penyebabnya, lalu muat ulang.
+        </p>
+        <pre className="mt-4 overflow-x-auto rounded-lg border border-red-500/30 bg-black/30 p-3 text-xs text-red-200">
+          {loadError}
+        </pre>
+        <button
+          type="button"
+          onClick={loadContent}
+          className="mt-5 rounded-lg border border-red-400/40 bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/30"
+        >
+          Coba Lagi
+        </button>
+      </div>
+    );
   }
 
   return (
