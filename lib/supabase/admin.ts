@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types';
+import { supabaseServiceRoleKey, supabaseUrl } from './env';
 
 /**
  * Next.js patches the global `fetch` in server runtime and applies HTTP
@@ -16,21 +17,12 @@ const noStoreFetch: typeof fetch = (input, init) =>
  * ⚠️  HANYA untuk server-side (Route Handlers). Jangan pernah import ini
  * dari client component — service role key mem-bypass RLS.
  *
- * Dipakai untuk operasi yang butuh akses penuh, misal insert booking
- * customer dengan tetap menjaga RLS, atau operasi admin tertentu.
- * Untuk validasi session admin tetap gunakan createSupabaseServerClient.
+ * Env di-resolve lewat `./env` agar format key lama (JWT) maupun baru
+ * (`sb_secret_*`) sama-sama jalan, dan agar nilai placeholder seperti
+ * "[SENSITIVE]" ditolak keras dengan pesan yang jelas.
  */
 export function createSupabaseAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-  if (!url || !serviceRoleKey) {
-    throw new Error(
-      'Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY',
-    );
-  }
-
-  return createClient<Database>(url, serviceRoleKey, {
+  return createClient<Database>(supabaseUrl(), supabaseServiceRoleKey(), {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

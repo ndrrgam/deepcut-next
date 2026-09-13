@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { Database } from '../types';
+import { supabaseAnonKey, supabaseUrl } from './env';
 
 /**
  * Next.js patches the global `fetch` in server runtime and applies HTTP
@@ -18,28 +19,24 @@ const noStoreFetch: typeof fetch = (input, init) =>
 export async function createSupabaseServerClient() {
   const cookieStore = cookies();
 
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {
-            // Called from a Server Component — safe to ignore when
-            // middleware is refreshing sessions.
-          }
-        },
+  return createServerClient<Database>(supabaseUrl(), supabaseAnonKey(), {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
       },
-      global: {
-        fetch: noStoreFetch,
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options),
+          );
+        } catch {
+          // Called from a Server Component — safe to ignore when
+          // middleware is refreshing sessions.
+        }
       },
     },
-  );
+    global: {
+      fetch: noStoreFetch,
+    },
+  });
 }
