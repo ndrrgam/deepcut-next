@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { todayWIB } from '@/lib/datetime';
+import { DEFAULT_WHATSAPP_NUMBER, toWaLinkNumber } from '@/lib/contact';
 import CustomSelect from '@/components/CustomSelect';
 import DatePickerField from '@/components/DatePickerField';
 
@@ -48,7 +49,13 @@ function formatJam(hhmm: string): string {
 }
 
 // Nomor WhatsApp admin yang menerima pesan booking.
-const ADMIN_WA_NUMBER = '6287741445773';
+// Diambil dari sumber tunggal `lib/contact.ts` — lihat catatan di sana.
+const ADMIN_WA_NUMBER = DEFAULT_WHATSAPP_NUMBER;
+
+/** URL wa.me tujuan booking, dengan normalisasi nomor yang konsisten. */
+function bookingWaUrl(message: string): string {
+  return `https://wa.me/${toWaLinkNumber(ADMIN_WA_NUMBER)}?text=${encodeURIComponent(message)}`;
+}
 
 // Susun teks pesan booking untuk WhatsApp.
 function buildWaMessage(opts: {
@@ -197,7 +204,7 @@ export default function BookingForm() {
         jamMulai: result.jam_mulai,
         jamSelesai: result.jam_selesai,
       });
-      const url = `https://wa.me/${ADMIN_WA_NUMBER}?text=${encodeURIComponent(message)}`;
+      const url = bookingWaUrl(message);
       window.open(url, '_blank', 'noopener,noreferrer');
 
       setSubmitted(true);
@@ -226,7 +233,7 @@ export default function BookingForm() {
     const branch = branches.find((b) => b.id === branchId);
     const b = booking;
     const jamSelesai = b?.jam_selesai ?? slots.find((s) => s.jam_mulai === selectedSlot)?.jam_selesai ?? '';
-    const waLink = `https://wa.me/${ADMIN_WA_NUMBER}?text=${encodeURIComponent(
+    const waLink = bookingWaUrl(
       buildWaMessage({
         nama: b?.nama ?? nama.trim(),
         noWa: b?.no_wa ?? noWa.trim(),
@@ -235,7 +242,7 @@ export default function BookingForm() {
         jamMulai: b?.jam_mulai ?? selectedSlot,
         jamSelesai,
       }),
-    )}`;
+    );
 
     return (
       <div className="bg-surface-secondary border border-line rounded-lg p-8 md:p-12 text-center">

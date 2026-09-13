@@ -378,11 +378,15 @@ function EditBookingModal({
     setSaving(true);
     setErr(null);
     try {
+      // `no_wa` HARUS dikirim sebagai string kosong, bukan null.
+      // Schema di /api/bookings/[id] memakai z.string().refine(...) yang
+      // menolak null — mengirim null membuat setiap edit dengan nomor WA
+      // dikosongkan gagal dengan 400. API sendiri yang mengubah '' -> null.
       await api(`/api/bookings/${booking.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
           nama,
-          no_wa: noWa || null,
+          no_wa: noWa,
           branch_id: branchId,
           tanggal,
           jam_mulai: jamMulai,
