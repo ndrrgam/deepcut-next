@@ -110,7 +110,90 @@ END$$;
 
 
 -- ----------------------------------------------------------------
--- 6. RLS bookings — jangan biarkan `anon` INSERT langsung.
+-- 6. Admin allowlist — WAJIB dibuat SEBELUM policy yang memakainya.
+--
+-- URUTAN ITU PENTING. Versi pertama migration ini menaruh blok ini
+-- setelah `CREATE POLICY ... WITH CHECK (public.is_deepcut_admin())`,
+-- dan gagal dengan:
+--
+--     ERROR: 42883: function public.is_deepcut_admin() does not exist
+--
+-- Postgres memvalidasi fungsi yang dipanggil policy pada saat CREATE
+-- POLICY, bukan saat dipakai. Karena seluruh isi migration ini berjalan
+-- dalam satu transaksi, kegagalan itu me-rollback SELURUH migration —
+-- tidak ada satu pun perubahan yang tersimpan.
+--
+-- Karena itu tabel `admins` dan fungsi `is_deepcut_admin()` didirikan
+-- lebih dulu di sini, baru policy dipasang di langkah 7 dan 8.
+--
+-- SEBELUM: `getAdminUser()` hanya mengecek ada session Supabase Auth.
+-- Supabase mengizinkan sign-up self-service, jadi siapa pun yang bisa
+-- memanggil /auth/v1/signup menjadi "authenticated" dan otomatis
+-- mendapat seluruh akses admin (RLS `TO authenticated USING (true)`,
+-- dashboard, hapus booking, upload file).
+--
+-- SESUDAH: keanggotaan admin ditentukan lewat tabel allowlist yang
+-- independen, dan seluruh policy admin memakai is_deepcut_admin().
+--
+-- PENTING — dijalankan sekali:
+--   6a. insert email admin di bawah, GANTI nilainya (langkah 6c).
+--   6b. setelah selesai, matikan sign-up publik di Dashboard Supabase
+--       (Authentication -> Providers -> Email -> Disable sign-ups).
+-- ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.admins (
+    user_id    uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email      text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Dulu `public.admins` sudah ada tapi kolomnya belum tentu sesuai
+-- (mis. dibuat manual). Tambahkan kolom yang kurang agar migration
+-- tidak meledak di versi schema yang berbeda.
+ALTER TABLE public.admins ADD COLUMN IF NOT EXISTS email text;
+ALTER TABLE public.admins ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
+
+-- Tidak ada satu pun policy -> tidak ada akses lewat PostgREST untuk
+-- anon maupun authenticated. Hanya service role yang bisa membacanya.
+REVOKE ALL ON public.admins FROM anon, authenticated;
+
+-- Helper dipakai oleh seluruh policy admin. SECURITY DEFINER +
+-- search_path terkunci supaya tidak bisa di-hijack lewat schema lain,
+-- dan supaya tidak ada rekursi RLS saat policy tabel lain memanggilnya.
+DROP FUNCTION IF EXISTS public.is_deepcut_admin();
+
+CREATE FUNCTION public.is_deepcut_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.admins WHERE user_id = auth.uid()
+    );
+$$;
+
+REVOKE ALL ON FUNCTION public.is_deepcut_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_deepcut_admin() TO anon, authenticated;
+
+-- 6c. ---- GANTI email berikut dengan admin sebenarnya ----
+-- Ambil user_id dari auth.users setelah akun admin dibuat.
+INSERT INTO public.admins (user_id, email)
+SELECT id, email
+  FROM auth.users
+ WHERE email IN (
+        'admin@deepcut.id'   -- <-- GANTI
+      )
+ON CONFLICT (user_id) DO NOTHING;
+
+-- Kalau akun admin belum ada saat migration dijalankan, jalankan blok
+-- INSERT di atas lagi setelah akun dibuat.
+
+
+-- ----------------------------------------------------------------
+-- 7. RLS bookings — jangan biarkan `anon` INSERT langsung.
 --
 -- SEBELUM: policy `bookings_insert_public ... TO anon, authenticated
 -- WITH CHECK (true)`. Anon key bersifat publik (ada di bundle browser),
@@ -130,67 +213,6 @@ CREATE POLICY "bookings_insert_admin"
     ON public.bookings FOR INSERT
     TO authenticated
     WITH CHECK (public.is_deepcut_admin());
-
-
--- ----------------------------------------------------------------
--- 7. Admin allowlist.
---
--- SEBELUM: `getAdminUser()` hanya mengecek ada session Supabase Auth.
--- Supabase mengizinkan sign-up self-service, jadi siapa pun yang bisa
--- memanggil /auth/v1/signup menjadi "authenticated" dan otomatis
--- mendapat seluruh akses admin (RLS `TO authenticated USING (true)`,
--- dashboard, hapus booking, upload file).
---
--- SESUDAH: keanggotaan admin ditentukan lewat tabel allowlist yang
--- independen. RLS admin sekarang memakai is_deepcut_admin().
---
--- PENTING — jalankan langkah 7a dan 7b SEKALI:
---   7a. matikan sign-up publik di Dashboard Supabase
---       (Authentication -> Providers -> Email -> Disable sign-ups)
---   7b. insert email admin di bawah, GANTI nilainya.
--- ----------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.admins (
-    user_id    uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    email      text NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
-
--- Tidak ada satu pun policy -> tidak ada akses lewat PostgREST untuk
--- anon maupun authenticated. Hanya service role yang bisa membacanya.
-REVOKE ALL ON public.admins FROM anon, authenticated;
-
--- Helper dipakai oleh policy. SECURITY DEFINER + search_path terkunci
--- supaya tidak bisa di-hijack lewat schema lain, dan supaya tidak ada
--- rekursi RLS saat policy tabel lain memanggilnya.
-CREATE OR REPLACE FUNCTION public.is_deepcut_admin()
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-    SELECT EXISTS (
-        SELECT 1 FROM public.admins WHERE user_id = auth.uid()
-    );
-$$;
-
-REVOKE ALL ON FUNCTION public.is_deepcut_admin() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.is_deepcut_admin() TO anon, authenticated;
-
--- ---- 7b. GANTI email berikut dengan admin sebenarnya ----
--- Ambil user_id dari auth.users setelah akun admin dibuat.
-INSERT INTO public.admins (user_id, email)
-SELECT id, email
-  FROM auth.users
- WHERE email IN (
-        'admin@deepcut.id'   -- <-- GANTI
-      )
-ON CONFLICT (user_id) DO NOTHING;
-
--- Kalau akun admin belum ada saat migration dijalankan, jalankan
--- blok INSERT di atas lagi setelah akun dibuat.
 
 
 -- ----------------------------------------------------------------
