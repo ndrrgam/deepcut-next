@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node scripts/selfcheck.mjs && node --test lib/rate-limit.test.mjs",
+    "test": "node scripts/selfcheck.mjs && node --test scripts/format-price.test.mjs lib/rate-limit.test.mjs",
     "typecheck": "tsc --noEmit",
     "verify": "npm run typecheck && npm test && npm run build"
   },
