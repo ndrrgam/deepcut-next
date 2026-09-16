@@ -6,6 +6,13 @@
 import { readFileSync } from 'node:fs';
 
 let src = readFileSync('lib/rate-limit.ts', 'utf8');
+
+// Normalisasi line ending dulu. Git bisa checkout file ini sebagai CRLF
+// (Windows) atau LF (CI/Linux) tergantung `core.autocrlf`; regex berbasis
+// `\n` akan gagal senyap di CRLF. Ini pernah bikin test lolos lokal tapi
+// gagal di checkout bersih.
+src = src.replace(/\r\n/g, '\n');
+
 src = src.replace(/^interface Bucket \{[\s\S]*?\n\}\n/m, '');
 src = src.replace(/^export interface RateLimitResult \{[\s\S]*?\n\}\n/m, '');
 src = src.replace(/: RateLimitResult/g, '').replace(/: Bucket/g, '');
@@ -13,6 +20,18 @@ src = src.replace(/: string/g, '').replace(/: number/g, '').replace(/: boolean/g
 src = src.replace(/: Request/g, '').replace(/: string \| undefined/g, '');
 src = src.replace(/ as const/g, '').replace(/<string, Bucket>/g, '');
 src = src.replace(/^export /gm, '');
+
+// Guard: kalau masih ada sisa deklarasi interface/type, stripper di atas
+// sudah tidak cocok dengan isi file — gagalkan dengan pesan jelas daripada
+// meledak dengan "Unexpected identifier".
+if (/^\s*(interface|type)\s+\w+/m.test(src)) {
+  console.error(
+    'selfcheck: stripper tipe tidak cocok dengan lib/rate-limit.ts.\n' +
+      'Perbarui regex di scripts/selfcheck.mjs agar sesuai bentuk file terbaru.',
+  );
+  process.exit(1);
+}
+
 src += '\nglobalThis.__rl = { checkRateLimit, clientIp, BOOKING_RATE, UPLOAD_RATE, LOGIN_RATE };\n';
 new Function(src)();
 const { checkRateLimit, clientIp, BOOKING_RATE, UPLOAD_RATE, LOGIN_RATE } = globalThis.__rl;
