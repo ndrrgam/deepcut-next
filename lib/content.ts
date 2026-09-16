@@ -82,14 +82,15 @@ export const DEFAULT_CONTENT: LandingContent = {
     meta_status: 'Walk-in & Booking',
   },
   services: [
-    { name: 'Haircut Reguler', price: '60.000' },
-    { name: 'Fade / UnderCut', price: '75.000' },
-    { name: 'Haircut + Beard', price: '100.000' },
-    { name: 'Razor Shave (Hot Towel)', price: '65.000' },
-    { name: 'Beard Trim / Grooming', price: '45.000' },
-    { name: 'Kids Cut (≤ 10 th)', price: '50.000' },
-    { name: 'Creambath / Treatment', price: '85.000' },
-    { name: 'Hair Coloring', price: '250.000' },
+    { name: 'Haircut Reguler', price: '35.000' },
+    { name: 'Keramas + Styling', price: '20.000' },
+    { name: 'Special Haircut', price: '40.000' },
+    { name: 'Creambath / Treatment', price: '60.000' },
+    { name: 'Hair Coloring', price: 'start from 200.000' },
+    { name: 'Special Toning', price: 'start from 70.000' },
+    { name: 'Keratin', price: '200.000' },
+    { name: 'Perming', price: '200.000' },
+    { name: 'Shaving', price: '15.000' },
   ],
   gallery: [
     {

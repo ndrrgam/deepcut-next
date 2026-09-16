@@ -240,15 +240,21 @@ function Services({ services }: { services: Service[] }) {
         <div className="grid md:grid-cols-2 gap-x-20 gap-y-0">
           {[0, 1].map((col) => (
             <div key={col}>
-              {services.filter((_, i) => i % 2 === col).map((s) => (
-                <div key={s.name} className="reveal-hidden flex items-baseline justify-between gap-5 py-[19px] border-b border-line" style={{ '--d': `${0.04 + services.indexOf(s) * 0.08}s` } as React.CSSProperties}>
-                  <span className="text-[1.02rem] font-medium">{s.name}</span>
-                  <span className="flex-1 border-b border-dotted border-white/15 translate-y-[-4px]" aria-hidden="true" />
-                  <span className="font-display text-[1.35rem] tracking-[0.04em] text-accent font-bold italic flex-shrink-0">
-                    Rp {s.price}
-                  </span>
-                </div>
-              ))}
+              {services
+                .map((s, i) => ({ s, i }))
+                .filter(({ i }) => i % 2 === col)
+                .map(({ s, i }) => (
+                  <div
+                    key={`${i}-${s.name}`}
+                    className="reveal-hidden flex items-baseline justify-between gap-5 py-[19px] border-b border-line"
+                  >
+                    <span className="text-[1.02rem] font-medium">{s.name}</span>
+                    <span className="flex-1 border-b border-dotted border-white/15 translate-y-[-4px]" aria-hidden="true" />
+                    <span className="font-display text-[1.35rem] tracking-[0.04em] text-accent font-bold italic flex-shrink-0">
+                      Rp {s.price}
+                    </span>
+                  </div>
+                ))}
             </div>
           ))}
         </div>
@@ -503,16 +509,38 @@ function Footer({ instagramHandle }: { instagramHandle: string }) {
 
 /* ================================================================
    SCROLL REVEAL HOOK
+   ================================================================
+   KENAPA DIREWRITE:
+   Versi sebelumnya mengambil `document.querySelectorAll('.reveal-hidden')`
+   SEKALI saat mount, lalu memakai daftar statis itu selamanya. Sementara
+   `useContent()` men-fetch `/api/content` setelah mount dan mengganti
+   seluruh daftar layanan dengan data dari API. Node DOM yang baru tidak
+   pernah masuk daftar `els`, sehingga tidak pernah di-`observe()` maupun
+   di-reveal oleh `setTimeout` — item menu itu tinggal `opacity: 0`
+   permanen. Gejala di produksi: "Menu & Harga cuma tampil sebagian".
+
+   Versi ini memakai MutationObserver untuk ikut memantau item yang
+   muncul belakangan, dan mereset timer supaya DOM yang baru selalu punya
+   jendela waktu untuk di-reveal. Aturan yang dijaga: `.reveal-hidden`
+   TIDAK BOLEH permanen invisible. Kalau observer gagal, JS mati, atau
+   elemen tak pernah masuk viewport — `revealAll` tetap menyelamatkannya.
    ================================================================ */
 function useScrollReveal() {
   useEffect(() => {
-    const els = document.querySelectorAll('.reveal-hidden');
-    if (els.length === 0) return;
-    const revealAll = () => els.forEach((el) => el.classList.add('reveal-shown'));
-    if (!('IntersectionObserver' in window)) {
-      revealAll();
+    if (typeof window === 'undefined') return;
+
+    // Reveal tanpa animasi untuk pengguna yang memintanya.
+    const prefersReduced = window.matchMedia?.(
+      '(prefers-reduced-motion: reduce)',
+    ).matches;
+    if (prefersReduced || !('IntersectionObserver' in window)) {
+      document
+        .querySelectorAll('.reveal-hidden')
+        .forEach((el) => el.classList.add('reveal-shown'));
       return;
     }
+
+    const observed = new WeakSet<Element>();
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -522,14 +550,48 @@ function useScrollReveal() {
           }
         });
       },
-      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+      // rootMargin negatif kecil saja: ambang besar membuat elemen yang
+      // tinggi (baris menu) tidak pernah dianggap "intersecting".
+      { threshold: 0.01, rootMargin: '0px 0px -10px 0px' },
     );
-    els.forEach((el) => io.observe(el));
-    // Safety net: never leave content hidden (SEO, slow JS, full-page captures)
-    const t = setTimeout(revealAll, 2500);
+
+    let timer: ReturnType<typeof setTimeout>;
+
+    /** Jadikan semua yang belum terlihat, terlihat. Ini jaring pengaman. */
+    const revealAll = () => {
+      document.querySelectorAll('.reveal-hidden').forEach((el) => {
+        el.classList.add('reveal-shown');
+        io.unobserve(el);
+      });
+    };
+
+    /** Amati elemen baru; jadwalkan ulang jaring pengaman. */
+    const observeNew = () => {
+      document.querySelectorAll('.reveal-hidden').forEach((el) => {
+        if (observed.has(el)) return;
+        observed.add(el);
+        io.observe(el);
+      });
+      clearTimeout(timer);
+      timer = setTimeout(revealAll, 2500);
+    };
+
+    observeNew();
+
+    // Konten dari `/api/content` datang setelah mount dan mengganti node.
+    // Tanpa pemantauan ini, node baru tidak akan pernah di-reveal.
+    const mo = new MutationObserver(observeNew);
+    mo.observe(document.body, { childList: true, subtree: true });
+
+    // Scroll & resize terakhir: pastikan apa pun yang sudah masuk layar
+    // tidak tertinggal kalau observer meleset.
+    window.addEventListener('load', observeNew);
+
     return () => {
+      mo.disconnect();
       io.disconnect();
-      clearTimeout(t);
+      clearTimeout(timer);
+      window.removeEventListener('load', observeNew);
     };
   }, []);
 }

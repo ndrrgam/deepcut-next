@@ -104,3 +104,46 @@
     }
   }
 }
+
+/* ==========================================================
+   Jaring pengaman reveal — WAJIB di paling akhir file.
+   ==========================================================
+   `.reveal-hidden` memakai `opacity: 0` dan baru terlihat setelah JS
+   menambahkan `.reveal-shown`. Kalau JS gagal dimuat, error, atau
+   lambat, seluruh konten tetap tidak terlihat — ini yang membuat
+   "Menu & Harga" di produksi hanya tampil sebagian.
+
+   Animasi ini murni hiasan. Konten yang tidak terlihat jauh lebih
+   buruk daripada kehilangan efek fade, jadi jaring pengaman ini
+   membatalkan `opacity: 0` TANPA syarat setelah jeda singkat. Fade-in
+   tetap terasa, dan apa pun yang gagal direveal JS akan muncul sendiri.
+
+   Diletakkan di akhir file (bukan di dalam @layer) supaya selalu
+   menang atas `@layer components` tempat `.reveal-hidden` didefinisikan,
+   tanpa bergantung pada urutan layer Tailwind. */
+@keyframes deepcut-reveal-fallback {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.reveal-hidden {
+  animation: deepcut-reveal-fallback 0.75s cubic-bezier(0.22, 0.61, 0.36, 1)
+    2.5s forwards;
+}
+
+/* JS sudah menangani elemen ini — jangan ditimpa animasi fallback. */
+.reveal-hidden.reveal-shown {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-hidden {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
