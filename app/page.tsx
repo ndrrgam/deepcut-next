@@ -225,6 +225,48 @@ function Marquee({ items }: { items: string[] }) {
 }
 
 /* ---------- SERVICES ---------- */
+
+/**
+ * Format harga untuk ditampilkan.
+ *
+ * Data di database menyimpan rentang harga sebagai dua titik dengan
+ * awalan "start from" di dalam kolom price, mis. "70.000 ... 250.000"
+ * untuk Special Toning. Kalau nilai itu dicetak apa adanya setelah "Rp",
+ * hasilnya salah: "Rp 70.000 ... 250.000".
+ *
+ * Fungsi ini menormalkan semuanya ke bentuk yang benar:
+ *   "70.000 ... 250.000"  ->  "start from Rp 70.000"   (hanya harga awal)
+ *   "60.000"              ->  "Rp 60.000"
+ *
+ * Ditulis toleran terhadap beberapa cara penulisan rentang ("...", "…",
+ * "-", "–", "s/d"), supaya edit di admin panel tidak diam-diam merusak
+ * tampilan. Kata "start from" ditambahkan OTOMATIS, jadi admin cukup
+ * mengetik angkanya saja.
+ */
+function formatPrice(raw: string): string {
+  const value = (raw ?? '').trim();
+  if (!value) return '';
+
+  // Rentang harga: "70.000 ... 250.000", "70.000 - 250.000", "70.000 s/d 250.000"
+  //
+  // Catatan regex: `[\d.,]+` bersifat greedy, jadi untuk "70.000...250.000"
+  // (tanpa spasi) ia ikut menelan titik-titik pemisahnya. Karena itu angka
+  // diakhiri `[\d.,]*\d` — titik/desimal di ujung tidak ikut terserap, dan
+  // pemisah `\.{2,}` tetap punya sisa yang bisa dikenali.
+  const range = value.match(/^([\d.,]*\d)\s*(?:\.{2,}|…|s\/d|[-–—])\s*([\d.,]*\d)/i);
+  if (range) return `start from Rp ${range[1]}`;
+
+  // Nilai sudah dalam bentuk siap tampil (mis. diketik manual "Mulai 50.000"
+  // atau sudah mengandung "Rp" sendiri) — jangan ditambahi lagi.
+  if (/^rp\b/i.test(value)) return value;
+  if (/^(start from|mulai|from)\b/i.test(value)) {
+    const rest = value.replace(/^(start from|mulai|from)\s*/i, '');
+    return /^rp\b/i.test(rest) ? `start from ${rest}` : `start from Rp ${rest}`;
+  }
+
+  return `Rp ${value}`;
+}
+
 function Services({ services }: { services: Service[] }) {
   return (
     <section id="layanan" className="py-28 border-b border-line bg-surface-secondary">
@@ -250,8 +292,8 @@ function Services({ services }: { services: Service[] }) {
                   >
                     <span className="text-[1.02rem] font-medium">{s.name}</span>
                     <span className="flex-1 border-b border-dotted border-white/15 translate-y-[-4px]" aria-hidden="true" />
-                    <span className="font-display text-[1.35rem] tracking-[0.04em] text-accent font-bold italic flex-shrink-0">
-                      Rp {s.price}
+                    <span className="font-display text-[1.1rem] tracking-[0.04em] text-accent font-bold italic flex-shrink-0 whitespace-nowrap">
+                      {formatPrice(s.price)}
                     </span>
                   </div>
                 ))}
