@@ -1,16 +1,9 @@
 /**
  * Resolver env Supabase yang tahan terhadap perbedaan penamaan.
- *
- * Supabase punya dua format key:
- *   - Lama  : `anon` JWT  (eyJ...)  + `service_role` JWT
- *   - Baru  : `sb_publishable_*`   + `sb_secret_*`
- *
- * Vercel project bisa menamai variabelnya dengan salah satu dari dua skema.
- * Kalau kode hanya membaca satu nama, deployment akan "jalan" tapi gagal
- * diam-diam dengan pesan yang menyesatkan. Helper ini menerima keduanya.
+ * ... (docstring sama)
  */
 
-/** Nilai placeholder yang ditulis Vercel CLI untuk env bertipe Secret. */
+/** Nilai placeholder yang ditulis Vercel CLI / dashboard untuk env bertipe Secret. */
 const SENSITIVE_PLACEHOLDER = '[SENSITIVE]';
 
 /**
@@ -33,18 +26,35 @@ function firstUsable(...candidates: (string | undefined)[]): string | undefined 
   return candidates.find(isUsable);
 }
 
-/** URL proyek Supabase. Wajib ada. */
-export function supabaseUrl(): string {
-  const url = firstUsable(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  if (!url) {
+/**
+ * URL proyek Supabase. Wajib ada.
+ *
+ * Menerima `SUPABASE_URL` sebagai cadangan: Vercel integration Supabase
+ * memasang nama itu, dan lingkungan yang sudah ada kadang hanya punya versi
+ * tanpa prefix NEXT_PUBLIC_. Membaca keduanya mencegah kegagalan deploy
+ * hanya karena beda penamaan.
+ */
+export function supabaseUrl() {
+  const raw = firstUsable(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_URL,
+  );
+  if (!raw) {
+    // Untuk pesan diagnosa, lihat nilai APA ADANYA (termasuk yang kosong),
+    // karena alasan kegagalan justru ada di situ.
+    const seen = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
+    const status =
+      seen === undefined ? 'tidak diset sama sekali'
+      : seen.trim() === '' ? 'diset tapi kosong'
+      : seen === SENSITIVE_PLACEHOLDER ? 'bertipe Secret di Vercel (ter-inline "[SENSITIVE]")'
+      : 'berisi nilai template placeholder';
     throw new Error(
-      'Env var NEXT_PUBLIC_SUPABASE_URL tidak valid atau kosong. ' +
-        `Nilai yang diterima: ${JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_URL ?? null)}. ` +
-        'Pastikan variabel ini bertipe "Plain Text" (bukan Secret) di Vercel — ' +
-        'env bertipe Secret di-inline sebagai "[SENSITIVE]" saat build.',
+      'NEXT_PUBLIC_SUPABASE_URL tidak dapat dipakai — status: ' + status + '. ' +
+        'Set sebagai Plain Text (bukan Secret) di Vercel, nilainya ' +
+        'https://<project-ref>.supabase.co',
     );
   }
-  return url;
+  return raw;
 }
 
 /** Publishable / anon key. Aman dipakai di client. */

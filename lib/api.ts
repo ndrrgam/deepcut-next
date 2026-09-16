@@ -60,7 +60,21 @@ function adminEmailsFromEnv(): string[] {
  * akses ditolak, bukan dibuka. Jalankan migration-nya untuk membuka akses.
  */
 export async function getAdminUser() {
-  const supabase = await createSupabaseServerClient();
+  // Pembuatan client bisa melempar kalau env Supabase tidak sehat. Tanpa
+  // penangkapan di sini, sembilan endpoint admin (bookings, content, schedule,
+  // slots/block, upload) akan membalas 500 dan stack trace mentah ke log —
+  // bukan 401 yang rapi. Guard harus gagal TERTUTUP dan tetap tenang.
+  let supabase;
+  try {
+    supabase = await createSupabaseServerClient();
+  } catch (e) {
+    console.error(
+      '[admin-guard] client Supabase tidak bisa dibuat — cek NEXT_PUBLIC_SUPABASE_URL ' +
+        '/ NEXT_PUBLIC_SUPABASE_ANON_KEY di Vercel (harus Plain Text). Akses ditolak.',
+    );
+    return null;
+  }
+
   const {
     data: { user },
     error: authError,
@@ -80,7 +94,19 @@ export async function getAdminUser() {
 
   if (rpcError) {
     // Migration belum dijalankan / function tidak ada -> tolak (fail closed).
-    console.error('[admin-guard] RPC is_deepcut_admin gagal:', rpcError.message);
+    //
+    // Log sengaja TIDAK menyertakan pesan mentah dari PostgREST. Pesan itu
+    // memuat nama fungsi/internal schema (mis. "Could not find the function
+    // public.is_deepcut_admin ... in the schema cache") dan ikut terkirim ke
+    // log runtime Vercel, yang bisa dibaca siapa pun yang punya akses project.
+    // Yang kita simpan hanya kode error + apakah ini masalah "belum ada".
+    const code = rpcError.code ?? 'unknown';
+    const missing = code === 'PGRST202' || /could not find the function/i.test(rpcError.message ?? '');
+    console.error(
+      `[admin-guard] pengecekan admin gagal (kode=${code}${missing ? ', RPC belum ada' : ''}). ` +
+        'Jalankan migration 20260815000000_fix_slot_index_and_admin.sql; ' +
+        'selama itu, akses admin ditolak.',
+    );
     return null;
   }
 
