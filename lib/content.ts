@@ -86,8 +86,10 @@ export const DEFAULT_CONTENT: LandingContent = {
     { name: 'Keramas + Styling', price: '20.000' },
     { name: 'Special Haircut', price: '40.000' },
     { name: 'Creambath / Treatment', price: '60.000' },
-    { name: 'Hair Coloring', price: 'start from 200.000' },
-    { name: 'Special Toning', price: 'start from 70.000' },
+    // Rentang harga ditulis sebagai "awal ... akhir". Halaman menampilkan
+    // otomatis sebagai "start from Rp <awal>" — lihat formatPrice().
+    { name: 'Hair Coloring', price: '70.000 ... 250.000' },
+    { name: 'Special Toning', price: '70.000 ... 250.000' },
     { name: 'Keratin', price: '200.000' },
     { name: 'Perming', price: '200.000' },
     { name: 'Shaving', price: '15.000' },
