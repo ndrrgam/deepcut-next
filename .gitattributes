@@ -1,0 +1,29 @@
+# Normalisasi line ending.
+#
+# Tanpa ini, file ditulis LF di satu mesin dan di-checkout CRLF di mesin
+# lain sesuai `core.autocrlf`. Itu pernah bikin skrip verifikasi lolos di
+# lokal tapi gagal di checkout bersih, karena regex berbasis `\n` tidak
+# cocok dengan CRLF.
+#
+# `text=auto` -> git menyimpan LF di repo, checkout sesuai platform.
+* text=auto eol=lf
+
+# File yang memang harus tetap CRLF (dibuka di editor Windows).
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Biner — jangan disentuh.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+
+# Lockfile: jangan tampilkan di diff, dan jangan di-merge otomatis.
+package-lock.json linguist-generated=true

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { error, getAdminUser, json } from '@/lib/api';
+import { error, getAdminUser, json, tooManyRequests } from '@/lib/api';
+import { UPLOAD_RATE, checkRateLimit, clientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,14 @@ const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
 export async function POST(req: NextRequest) {
   const admin = await getAdminUser();
   if (!admin) return error('Tidak diizinkan', 401);
+
+  // Rate limit per admin: upload adalah operasi manual, tidak perlu sering.
+  const rl = checkRateLimit(
+    `upload:${admin.id}:${clientIp(req)}`,
+    UPLOAD_RATE.limit,
+    UPLOAD_RATE.windowMs,
+  );
+  if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 
   const formData = await req.formData().catch(() => null);
   if (!formData) return error('Request harus berupa FormData', 400);

@@ -2,7 +2,8 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { error, getAdminUser, json } from '@/lib/api';
+import { error, getAdminUser, json, tooManyRequests } from '@/lib/api';
+import { BOOKING_RATE, checkRateLimit, clientIp } from '@/lib/rate-limit';
 import { jamSelesai, isSlotBookable, isValidSlot } from '@/lib/slots';
 import { normalizePhone } from '@/lib/validation';
 import { BLOCKED_BOOKING_NAME, SLOT_CAPACITY } from '@/lib/constants';
@@ -44,6 +45,20 @@ const listQuerySchema = z.object({
 // POST /api/bookings — buat booking (customer, publik)
 // ----------------------------------------------------------------
 export async function POST(req: NextRequest) {
+  // 0. Rate limit per IP. Tanpa ini satu skrip bisa mengunci seluruh
+  //    slot kalender: POST langsung berulang tanpa jeda.
+  const rl = checkRateLimit(
+    `booking:${clientIp(req)}`,
+    BOOKING_RATE.limit,
+    BOOKING_RATE.windowMs,
+  );
+  if (!rl.ok) {
+    return tooManyRequests(
+      rl.retryAfterSec,
+      'Terlalu banyak percobaan booking. Tunggu beberapa menit lalu coba lagi.',
+    );
+  }
+
   const body = await req.json().catch(() => null);
   const parsed = createBookingSchema.safeParse(body);
 
